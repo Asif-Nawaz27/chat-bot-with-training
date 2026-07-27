@@ -1,0 +1,10 @@
+**/bin/
+**/obj/
+**/.vs/
+**/*.user
+.git/
+.claude/
+Data/
+checkpoints/
+MiniGptChat.Web/
+README.md
