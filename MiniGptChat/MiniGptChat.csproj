@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <!-- Class library: this project has no entry point of its own. It's consumed by
+         MiniGptChat.Cli (console train/chat commands) and MiniGptChat.Api (HTTP endpoints). -->
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>MiniGptChat</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="libtorch-cpu" Version="2.2.1.1" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.10" />
+    <PackageReference Include="TorchSharp" Version="0.102.7" />
+  </ItemGroup>
+
+</Project>

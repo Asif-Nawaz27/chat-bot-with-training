@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="MiniGptChat.Api/MiniGptChat.Api.csproj" />
+  <Project Path="MiniGptChat/MiniGptChat.csproj" />
+</Solution>

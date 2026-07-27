@@ -1,0 +1,21 @@
+/* Self-hosted via @fontsource - no CDN calls, consistent with this project's
+   "everything runs locally, nothing phones out" ethos. */
+
+/* Fraunces: the wordmark/heading face. A serif with real texture - stands in
+   deliberate contrast to the raw, computational subject matter (a hand-grown
+   model, not a slick SaaS product). Used sparingly, headings only. */
+@import "@fontsource/fraunces/500.css";
+@import "@fontsource/fraunces/600.css";
+
+/* Hanken Grotesk: body/UI face for chat bubbles, labels, buttons. Clean and
+   humanist so it doesn't compete with Fraunces above it. */
+@import "@fontsource/hanken-grotesk/400.css";
+@import "@fontsource/hanken-grotesk/500.css";
+@import "@fontsource/hanken-grotesk/600.css";
+@import "@fontsource/hanken-grotesk/700.css";
+
+/* JetBrains Mono: reserved for anything that's literally data - the session
+   id, hyperparameter values, token/step counts - a small visual cue that
+   you're looking at a number the model produced, not prose. */
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/500.css";

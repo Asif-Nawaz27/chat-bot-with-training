@@ -1,0 +1,177 @@
+/*
+  Design system
+  -------------
+  Subject: a transformer grown from raw text on your own machine - no
+  pretrained weights, nothing phoned out to a cloud model. The palette pairs
+  a warm, hand-mixed paper neutral (light) / deep instrument-panel ink
+  (dark) with a single signal-teal accent - the colour of a trace on an
+  oscilloscope, standing in for "the model is alive and responding".
+
+  Type: Fraunces (display serif, headings/wordmark only) + Hanken Grotesk
+  (body/UI) + JetBrains Mono (anything that's literally a number the model
+  produced: session ids, hyperparameters, step counts).
+*/
+
+:root {
+  /* --- Light theme --- */
+  --bg: #eef0e9;
+  --surface: #fbfbf8;
+  --surface-sunken: #e3e6dd;
+  --ink: #1c221f;
+  --ink-muted: #5c655f;
+  --border: #d7dbcf;
+  --border-strong: #b7bdae;
+
+  --accent: #0d7f78;
+  --accent-strong: #095e59;
+  --accent-contrast: #f4faf9;
+  --accent-soft: rgba(13, 127, 120, 0.1);
+  --accent-soft-strong: rgba(13, 127, 120, 0.18);
+
+  --danger: #a8402a;
+  --danger-soft: rgba(168, 64, 42, 0.1);
+
+  --shadow-color: 30deg 12% 15%;
+  --shadow-sm: 0 1px 2px hsl(var(--shadow-color) / 0.08);
+  --shadow-md: 0 8px 24px -8px hsl(var(--shadow-color) / 0.22);
+
+  /* --- Type --- */
+  --font-display: "Fraunces", ui-serif, Georgia, serif;
+  --font-body: "Hanken Grotesk", system-ui, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-base: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+
+  /* --- Spacing scale --- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  --radius-sm: 8px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+
+  color-scheme: light dark;
+  font: var(--text-base) / 1.55 var(--font-body);
+  color: var(--ink);
+  background: var(--bg);
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #101513;
+    --surface: #171f1c;
+    --surface-sunken: #0c110f;
+    --ink: #e8ece7;
+    --ink-muted: #93a49c;
+    --border: #263630;
+    --border-strong: #34473f;
+
+    --accent: #3fd7c7;
+    --accent-strong: #7ce8dc;
+    --accent-contrast: #06211d;
+    --accent-soft: rgba(63, 215, 199, 0.14);
+    --accent-soft-strong: rgba(63, 215, 199, 0.22);
+
+    --danger: #ff9376;
+    --danger-soft: rgba(255, 147, 118, 0.14);
+
+    --shadow-color: 180deg 30% 2%;
+    --shadow-sm: 0 1px 2px hsl(var(--shadow-color) / 0.4);
+    --shadow-md: 0 12px 32px -8px hsl(var(--shadow-color) / 0.55);
+  }
+}
+
+:root[data-theme="dark"] {
+  --bg: #101513;
+  --surface: #171f1c;
+  --surface-sunken: #0c110f;
+  --ink: #e8ece7;
+  --ink-muted: #93a49c;
+  --border: #263630;
+  --border-strong: #34473f;
+  --accent: #3fd7c7;
+  --accent-strong: #7ce8dc;
+  --accent-contrast: #06211d;
+  --accent-soft: rgba(63, 215, 199, 0.14);
+  --accent-soft-strong: rgba(63, 215, 199, 0.22);
+  --danger: #ff9376;
+  --danger-soft: rgba(255, 147, 118, 0.14);
+  --shadow-color: 180deg 30% 2%;
+  --shadow-sm: 0 1px 2px hsl(var(--shadow-color) / 0.4);
+  --shadow-md: 0 12px 32px -8px hsl(var(--shadow-color) / 0.55);
+}
+
+:root[data-theme="light"] {
+  --bg: #eef0e9;
+  --surface: #fbfbf8;
+  --surface-sunken: #e3e6dd;
+  --ink: #1c221f;
+  --ink-muted: #5c655f;
+  --border: #d7dbcf;
+  --border-strong: #b7bdae;
+  --accent: #0d7f78;
+  --accent-strong: #095e59;
+  --accent-contrast: #f4faf9;
+  --accent-soft: rgba(13, 127, 120, 0.1);
+  --accent-soft-strong: rgba(13, 127, 120, 0.18);
+  --danger: #a8402a;
+  --danger-soft: rgba(168, 64, 42, 0.1);
+  --shadow-color: 30deg 12% 15%;
+  --shadow-sm: 0 1px 2px hsl(var(--shadow-color) / 0.08);
+  --shadow-md: 0 8px 24px -8px hsl(var(--shadow-color) / 0.22);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+input {
+  font: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+code,
+.mono {
+  font-family: var(--font-mono);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
