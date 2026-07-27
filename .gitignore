@@ -1,0 +1,13 @@
+bin/
+obj/
+checkpoints/
+data/
+*.user
+.vs/
+.slnx/
+
+
+.claude/
+.slnx/
+/MiniGptChat.Api/appsettings.json
+/MiniGptChat.Api/appsettings.Development.json
