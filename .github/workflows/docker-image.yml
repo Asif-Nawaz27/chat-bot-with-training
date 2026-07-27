@@ -8,6 +8,7 @@ on:
 permissions:
   contents: read
   packages: write
+  id-token: write
 
 jobs:
   docker:
@@ -25,15 +26,33 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-          
+
       - name: Convert repository name to lowercase
         run: |
             echo "IMAGE_NAME=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
-            
+
       - name: Build and Push
         uses: docker/build-push-action@v6
         with:
           context: .
           file: MiniGptChat.Api/Dockerfile
           push: true
-          tags: ghcr.io/${{ env.IMAGE_NAME }}:latest
+          tags: |
+            ghcr.io/${{ env.IMAGE_NAME }}:latest
+            ghcr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      - name: Azure login (OIDC)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Deploy to Azure Container Apps
+        uses: azure/cli@v2
+        with:
+          inlineScript: |
+            az containerapp update \
+              --name gpt-chat-bot \
+              --resource-group DefaultResourceGroup-null \
+              --image ghcr.io/${{ env.IMAGE_NAME }}:${{ github.sha }}
