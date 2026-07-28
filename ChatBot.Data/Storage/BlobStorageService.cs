@@ -1,7 +1,8 @@
 using Azure.Storage.Blobs;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 
-namespace ChatBot.Api.Services;
+namespace ChatBot.Data.Storage;
 
 /// <inheritdoc cref="IBlobStorageService"/>
 public class BlobStorageService : IBlobStorageService

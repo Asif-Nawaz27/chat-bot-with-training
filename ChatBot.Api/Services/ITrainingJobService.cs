@@ -1,4 +1,5 @@
 using ChatBot.Api.Contracts;
+using ChatBot.Data.Messaging;
 
 namespace ChatBot.Api.Services;
 
@@ -26,4 +27,11 @@ public interface ITrainingJobService
     /// Throws <see cref="KeyNotFoundException"/> if the job id is unknown.
     /// </summary>
     TrainingJobStatusResponse GetStatus(string jobId, int since);
+
+    /// <summary>
+    /// Folds a progress/completion message received from ChatBot.Train (via the status
+    /// queue) into the job it refers to. A no-op if the job id isn't known to this
+    /// instance (e.g. the API restarted after the job started).
+    /// </summary>
+    void ApplyStatusUpdate(TrainingStatusMessage message);
 }

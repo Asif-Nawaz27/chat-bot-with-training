@@ -1,4 +1,4 @@
-namespace ChatBot.Api.Services;
+namespace ChatBot.Data.Storage;
 
 /// <summary>
 /// Syncs the local Data/ folder with two Azure Blob Storage containers - "data" (training

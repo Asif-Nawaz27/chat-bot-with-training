@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using ChatBot.Api.Contracts;
-using ChatBot.Api.Services;
 using ChatBot.Data;
+using ChatBot.Data.Storage;
 
 namespace ChatBot.Api.Controllers;
 

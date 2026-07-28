@@ -1,4 +1,4 @@
-namespace ChatBot.Api.Services;
+namespace ChatBot.Data.Storage;
 
 /// <summary>
 /// Bound from the "AzureStorage" section of appsettings (see appsettings.Development.json,
