@@ -1,4 +1,4 @@
-# MiniGptChat
+# ChatBot
 
 A tiny decoder-only Transformer ("mini-GPT") chatbot, trained **completely
 from scratch** in C# — no pretrained weights, no external LLM APIs. It's a
@@ -27,34 +27,32 @@ use a larger model, and/or add more of your own training data (see below).
 
 ## Solution structure
 
-The solution is split into four projects, each with a distinct job:
+The solution is split into three projects, each with a distinct job:
 
 ```
-MiniGptChat.slnx
+ChatBot.slnx
 
-MiniGptChat/            Class library - the model, training, and chat engine
-MiniGptChat.Cli/        Console app - `dotnet run -- train` / `dotnet run -- chat`
-MiniGptChat.Api/        ASP.NET Core Web API (controllers) - HTTP endpoints
-MiniGptChat.Web/        React + TypeScript + Vite - browser chat UI
+ChatBot.Data/       Class library - the model, training, and chat engine
+ChatBot.Api/        ASP.NET Core Web API (controllers) - HTTP endpoints
+ChatBot.Web/        React + TypeScript + Vite - browser chat UI
 
 Data/                   Shared training text + saved checkpoint (see below)
 ```
 
-`MiniGptChat.Cli` and `MiniGptChat.Api` both reference the `MiniGptChat`
-library and use its exact same services — they're just two different front
-doors onto the same model. `MiniGptChat.Web` talks to `MiniGptChat.Api` over
-HTTP; it has no direct dependency on the .NET code at all.
+`ChatBot.Api` references the `ChatBot.Data` library and uses its services
+directly. `ChatBot.Web` talks to `ChatBot.Api` over HTTP; it has no direct
+dependency on the .NET code at all.
 
 ### Why a shared `Data` folder works across projects
 
-`MiniGptChat.Cli` and `MiniGptChat.Api` run from different working
-directories and build to different output folders. So that training via one
-project is immediately visible to the other (rather than each ending up with
-its own separate copy of the checkpoint), `GptConfig`'s default file paths
-are resolved by `MiniGptChat/RepoPaths.cs`, which walks up from the running
-assembly's location to find `MiniGptChat.slnx` and anchors the `Data` folder
-there. This means training via the CLI, the API, or the sample dataset itself
-are all reading/writing the exact same three files:
+`ChatBot.Api` can run from different working directories and build to
+different output folders depending on how it's launched. So that a checkpoint
+trained in one run is immediately visible on the next (rather than ending up
+with its own separate copy), `GptConfig`'s default file paths are resolved by
+`ChatBot.Data/RepoPaths.cs`, which walks up from the running assembly's
+location to find `ChatBot.slnx` and anchors the `Data` folder there. This
+means training via the API or the sample dataset itself are all
+reading/writing the exact same three files:
 
 | File | Contents |
 |---|---|
@@ -64,10 +62,10 @@ are all reading/writing the exact same three files:
 
 ## Tech stack
 
-- **.NET 10** (SDK required) for `MiniGptChat`, `MiniGptChat.Cli`, `MiniGptChat.Api`
+- **.NET 10** (SDK required) for `ChatBot.Data`, `ChatBot.Api`
 - [TorchSharp](https://www.nuget.org/packages/TorchSharp) — managed API for building/training the model
 - [libtorch-cpu](https://www.nuget.org/packages/libtorch-cpu) — the native CPU-only backend TorchSharp calls into
-- [Microsoft.Extensions.DependencyInjection](https://www.nuget.org/packages/Microsoft.Extensions.DependencyInjection) — wires up the library's services, shared by the CLI and the API
+- [Microsoft.Extensions.DependencyInjection](https://www.nuget.org/packages/Microsoft.Extensions.DependencyInjection) — wires up the library's services for the API
 - ASP.NET Core Web API with **controllers** (`[ApiController]`/`ControllerBase`), not minimal API endpoints
 - **React 19 + TypeScript + Vite** for the web UI (Node.js required), with self-hosted fonts via `@fontsource` (no CDN calls)
 
@@ -80,7 +78,7 @@ first time you build:
 
 ```bash
 dotnet restore
-dotnet build MiniGptChat.slnx
+dotnet build ChatBot.slnx
 ```
 
 `libtorch-cpu` is a large native package (several hundred MB) containing the
@@ -90,25 +88,17 @@ download it.
 For the web UI:
 
 ```bash
-cd MiniGptChat.Web
+cd ChatBot.Web
 npm install
 ```
 
 ## How to train
 
-**Option A — console:**
-
-```bash
-cd MiniGptChat.Cli
-dotnet run -- train
-dotnet run -- train --steps 5000 --batch-size 64 --lr 0.0003   # optional overrides
-```
-
-**Option B — HTTP API:** training runs as a background job so you can poll
+**Option A — HTTP API:** training runs as a background job so you can poll
 for progress instead of holding one request open for several minutes.
 
 ```bash
-cd MiniGptChat.Api
+cd ChatBot.Api
 dotnet run
 # in another terminal:
 curl -X POST http://localhost:5141/api/training \
@@ -134,13 +124,13 @@ curl -X POST http://localhost:5141/api/training \
      -d '{"steps": 3000, "dataPath": "...\\Data\\uploaded_dataset.txt"}'
 ```
 
-**Option C — web UI:** open the **Train** tab. Optionally upload your own
+**Option B — web UI:** open the **Train** tab. Optionally upload your own
 `.txt` file (or leave it on the built-in sample), adjust the steps / eval
 interval / batch size / learning rate sliders, and click **Train now** (or
-**Retrain**). A terminal-style console panel streams the same log lines the
-CLI prints — loading the data, vocab size, then a loss line every "eval
-interval" steps — with a progress bar and a live/done indicator, so you can
-watch training happen instead of staring at a spinner.
+**Retrain**). A terminal-style console panel streams the training log lines —
+loading the data, vocab size, then a loss line every "eval interval" steps —
+with a progress bar and a live/done indicator, so you can watch training
+happen instead of staring at a spinner.
 
 Every option reads `Data/sample_conversations.txt` (or your uploaded file),
 builds a character vocabulary from it, trains a fresh model with next-token
@@ -148,30 +138,14 @@ prediction, and saves `model.dat` / `vocab.json` / `model_config.json` into
 the shared `Data/` folder. Training itself is still fully synchronous and
 CPU-only under the hood — a few thousand steps with the default small model
 typically takes several minutes on a modern laptop — the API just runs it on
-a background thread (see `MiniGptChat.Api/Services/TrainingJobService.cs`)
+a background thread (see `ChatBot.Api/Services/TrainingJobService.cs`)
 instead of blocking the HTTP request, and `ITrainingService.Train` accepts an
-optional `Action<string>? onLog` callback so both the API's job log and the
-console's stdout get the same lines.
+optional `Action<string>? onLog` callback so the API's job log captures the
+same lines the training loop produces.
 
 ## How to chat
 
-**Option A — console:**
-
-```bash
-cd MiniGptChat.Cli
-dotnet run -- chat
-```
-
-```
-You: hi
-Bot: Hello! How can I help you today?
-You: what is your name
-Bot: I'm a mini chatbot built from scratch in C#.
-```
-
-Type `exit` or `quit` to leave.
-
-**Option B — HTTP API directly:**
+**Option A — HTTP API directly:**
 
 ```bash
 curl -X POST http://localhost:5141/api/chat/sessions
@@ -183,15 +157,15 @@ curl -X POST http://localhost:5141/api/chat/sessions/<sessionId>/messages \
 # => {"sessionId":"...","reply":"Hello! How can I help you today?"}
 ```
 
-**Option C — web UI:**
+**Option B — web UI:**
 
 ```bash
 # terminal 1
-cd MiniGptChat.Api
+cd ChatBot.Api
 dotnet run --launch-profile http     # http://localhost:5141
 
 # terminal 2
-cd MiniGptChat.Web
+cd ChatBot.Web
 npm run dev                          # http://localhost:5173
 ```
 
@@ -215,11 +189,11 @@ instead of silently continuing to talk to the old ones.
 Every option formats the running conversation into the same
 `User: ...\nBot: ...` pattern the model was trained on, trimming older turns
 once things grow longer than the model's context window (`BlockSize`) — the
-console app does this in-process (`ConversationHistory`), and the API does it
-per-session server-side (`ChatSessionService`), so the browser client never
-needs to resend the whole transcript.
+API tracks this per-session server-side (`ChatSessionService` /
+`ConversationHistory`), so the browser client never needs to resend the whole
+transcript.
 
-## The web UI (`MiniGptChat.Web`)
+## The web UI (`ChatBot.Web`)
 
 A small, considered design rather than default component-library styling:
 
@@ -277,7 +251,7 @@ never loses an in-progress training run's state or an open chat session.
 ## API reference
 
 All endpoints are under `http://localhost:5141` (or `https://localhost:7292`)
-by default; see `MiniGptChat.Api/Properties/launchSettings.json`.
+by default; see `ChatBot.Api/Properties/launchSettings.json`.
 
 | Method & path | Body | Response |
 |---|---|---|
@@ -309,18 +283,18 @@ Uploads always land at `Data/uploaded_dataset.txt` (overwriting any previous
 upload), so there's exactly one "the custom dataset" at a time; click **Use
 sample data** on the Train tab to go back to the built-in dataset.
 
-## Azure Blob Storage (optional, `MiniGptChat.Api` only)
+## Azure Blob Storage (optional, `ChatBot.Api` only)
 
 By default everything lives on local disk in `Data/` (see "Solution
-structure" above). `MiniGptChat.Api` can optionally sync that folder with two
+structure" above). `ChatBot.Api` can optionally sync that folder with two
 containers in an Azure Storage account — **data** (training text files) and
 **checkpoint** (`model.dat` / `vocab.json` / `model_config.json`) — so a
 trained model survives beyond one machine's disk. This is entirely
-optional: `MiniGptChat.Cli` never touches Azure, and the API itself falls
-back to pure local file storage whenever it isn't configured.
+optional — the API falls back to pure local file storage whenever it isn't
+configured.
 
 **Setup:** set a connection string under `AzureStorage:ConnectionString` in
-`MiniGptChat.Api/appsettings.Development.json` (or any other .NET
+`ChatBot.Api/appsettings.Development.json` (or any other .NET
 configuration source — an environment variable
 `AzureStorage__ConnectionString`, `dotnet user-secrets`, etc.):
 
@@ -355,15 +329,14 @@ it's fine because "it's just a dev container."
   `checkpoint` container (you'll see this as log lines in the same training
   console the web UI shows: "Uploading checkpoint to Azure Blob Storage...").
 
-See `MiniGptChat.Api/Services/IBlobStorageService.cs` / `BlobStorageService.cs`
+See `ChatBot.Api/Services/IBlobStorageService.cs` / `BlobStorageService.cs`
 for the implementation — every method is a no-op when `IsEnabled` is false,
 which is exactly what happens when no connection string is set.
 
-## Project structure (inside `MiniGptChat/`)
+## Project structure (inside `ChatBot.Data/`)
 
 Small, single-purpose services wired together with a dependency injection
-container (`ServiceRegistration.cs`), shared by both `MiniGptChat.Cli` and
-`MiniGptChat.Api`:
+container (`ServiceRegistration.cs`), consumed by `ChatBot.Api`:
 
 ```
 GptConfig.cs                    All hyperparameters and file paths in one place
@@ -402,19 +375,17 @@ Chat/
   IChatModelLoader.cs / ChatModelLoader.cs     Loads a checkpoint into a ChatModelContext
   IChatReplyService.cs / ChatReplyService.cs   Produces one reply given history + a message
   ConversationHistory.cs         Tracks/trims the running transcript fed back into the model
-  IChatService.cs / ChatService.cs             Console chat loop (used by MiniGptChat.Cli)
-  IChatSessionService.cs / ChatSessionService.cs   Multi-session chat (used by MiniGptChat.Api)
+  IChatService.cs / ChatService.cs             Single-turn chat loop (not currently wired to a front end)
+  IChatSessionService.cs / ChatSessionService.cs   Multi-session chat (used by ChatBot.Api)
 
 ServiceRegistration.cs           IServiceCollection extension registering every service above
 ```
 
-`MiniGptChat.Cli/Program.cs` builds its own `ServiceProvider` from this
-registration; `MiniGptChat.Api/Program.cs` calls the same
-`AddMiniGptChatServices()` extension from its own ASP.NET Core DI setup — so
-both entry points are wired up identically and neither duplicates the
-loading/generation logic.
+`ChatBot.Api/Program.cs` calls the `AddChatBotDataServices()` extension from
+its own ASP.NET Core DI setup, wiring up every service above without
+duplicating the loading/generation logic.
 
-`MiniGptChat.Api` itself adds API-only services on top of the library:
+`ChatBot.Api` itself adds API-only services on top of the library:
 
 ```
 Controllers/

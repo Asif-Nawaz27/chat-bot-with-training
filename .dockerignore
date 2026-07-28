@@ -6,5 +6,5 @@
 .claude/
 Data/
 checkpoints/
-MiniGptChat.Web/
+ChatBot.Web/
 README.md
