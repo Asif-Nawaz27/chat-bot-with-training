@@ -9,5 +9,5 @@ data/
 
 .claude/
 .slnx/
-/MiniGptChat.Api/appsettings.json
-/MiniGptChat.Api/appsettings.Development.json
+/ChatBot.Api/appsettings.json
+/ChatBot.Api/appsettings.Development.json
