@@ -1,4 +1,5 @@
 <Solution>
   <Project Path="ChatBot.Api/ChatBot.Api.csproj" />
   <Project Path="ChatBot.Data/ChatBot.Data.csproj" />
+  <Project Path="ChatBot.Train/ChatBot.Train.csproj" Id="b15b00ac-6ac8-4f60-a0ef-a83d3409f774" />
 </Solution>

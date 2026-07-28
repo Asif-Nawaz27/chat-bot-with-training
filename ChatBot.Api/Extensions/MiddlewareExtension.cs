@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.Hosting.Server;
 using ChatBot.Api.Services;
 using ChatBot.Data;
+using ChatBot.Data.Messaging;
+using ChatBot.Data.Storage;
 
 namespace ChatBot.Api.Extensions
 {
@@ -22,6 +24,11 @@ namespace ChatBot.Api.Extensions
             // API-only: optionally syncs the local Data/ folder with Azure Blob Storage
             services.AddSingleton<IBlobStorageService, BlobStorageService>();
 
+            // Publishes training job requests to Service Bus for ChatBot.Train to pick up,
+            // and listens on the status queue for the progress/completion messages it sends back.
+            services.AddSingleton<IServiceBusPublisher, ServiceBusPublisher>();
+            services.AddHostedService<TrainingStatusListener>();
+
             // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
             services.AddOpenApi();
         }
@@ -35,9 +42,14 @@ namespace ChatBot.Api.Extensions
             // Disabled (a no-op) when no AzureStorage:ConnectionString is configured.
             services.Configure<BlobStorageOptions>(configuration.GetSection("AzureStorage"));
 
+            // Service Bus queue names/connection string used to hand training jobs off to
+            // ChatBot.Train and receive progress back - see appsettings.Development.json.
+            services.Configure<ServiceBusOptions>(configuration.GetSection("AzureServiceBus"));
+
             // CORS allowed origins - see appsettings.json's "AppSetting:cors".
             services.Configure<AppSettingOptions>(configuration.GetSection("AppSetting"));
         }
+
 
 
         public static void AddCorePolicy(this IServiceCollection services, ConfigurationManager configuration, string WebClientCorsPolicy)
