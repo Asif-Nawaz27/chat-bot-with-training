@@ -105,10 +105,32 @@ export async function startTraining(options: TrainOptions): Promise<string> {
   return data.jobId;
 }
 
-/** Fetches a training job's status plus any log lines produced since `since` (pass back the previous `nextCursor`). */
+/** Fetches a training job's status plus any log lines produced since `since` (pass back the previous `nextCursor`). Kept as a fallback; live updates should prefer subscribeTrainingJob. */
 export async function getTrainingJobStatus(jobId: string, since: number): Promise<TrainingJobStatus> {
   const response = await fetch(`${API_BASE_URL}/api/training/${jobId}/status?since=${since}`);
   return parseJsonOrThrow<TrainingJobStatus>(response);
+}
+
+/**
+ * Opens a Server-Sent Events stream (GET api/training/{jobId}/stream) for live training
+ * updates - an immediate snapshot of everything logged so far, then a push per subsequent
+ * update. `onError` fires if the connection drops before a terminal status was reached
+ * (e.g. the API restarted mid-run). Call the returned function to close the stream (e.g. on
+ * unmount or once the job reaches a terminal status).
+ */
+export function subscribeTrainingJob(
+  jobId: string,
+  onUpdate: (status: TrainingJobStatus) => void,
+  onError: () => void,
+): () => void {
+  const source = new EventSource(`${API_BASE_URL}/api/training/${jobId}/stream`);
+
+  source.onmessage = (event) => {
+    onUpdate(JSON.parse(event.data) as TrainingJobStatus);
+  };
+  source.onerror = onError;
+
+  return () => source.close();
 }
 
 export async function startChatSession(): Promise<string> {

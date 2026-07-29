@@ -11,3 +11,4 @@ data/
 .slnx/
 /ChatBot.Api/appsettings.json
 /ChatBot.Api/appsettings.Development.json
+/ChatBot.Train/appsettings.json

@@ -55,7 +55,9 @@ public class BlobStorageService : IBlobStorageService
     {
         if (!IsEnabled) return;
 
-        await container!.GetBlobClient(blobName).UploadAsync(content, overwrite: true);
+        await container!.GetBlobClient(blobName)
+            .UploadAsync(content, overwrite: true);
+
         _logger.LogInformation("Uploaded to {Container}/{BlobName}", container.Name, blobName);
     }
 

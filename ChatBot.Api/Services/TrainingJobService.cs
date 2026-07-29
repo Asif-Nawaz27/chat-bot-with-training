@@ -1,4 +1,6 @@
 using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
+using System.Threading.Channels;
 using ChatBot.Api.Contracts;
 using ChatBot.Data.Chat;
 using ChatBot.Data.Messaging;
@@ -76,12 +78,18 @@ public class TrainingJobService : ITrainingJobService
         if (!_jobs.TryGetValue(message.JobId, out var job))
             return;
 
+        TrainingJobStatusResponse update;
+        List<Channel<TrainingJobStatusResponse>> subscribers;
+        var terminal = message.Kind is TrainingStatusKind.Completed or TrainingStatusKind.Failed;
+
         lock (job.Lock)
         {
             switch (message.Kind)
             {
                 case TrainingStatusKind.Log:
-                    job.Logs.Add(message.LogLine ?? string.Empty);
+                    var line = message.LogLine ?? string.Empty;
+                    job.Logs.Add(line);
+                    update = new TrainingJobStatusResponse(job.Status, new[] { line }, job.Logs.Count, null, null);
                     break;
 
                 case TrainingStatusKind.Completed:
@@ -93,12 +101,70 @@ public class TrainingJobService : ITrainingJobService
                     // weights. This process (the API) is the only one holding that cache, so
                     // invalidation has to happen here rather than in ChatBot.Train.
                     _chatSessionService.InvalidateModel();
+                    update = new TrainingJobStatusResponse(job.Status, Array.Empty<string>(), job.Logs.Count, null, job.Result);
                     break;
 
                 case TrainingStatusKind.Failed:
                     job.ErrorMessage = message.ErrorMessage;
                     job.Status = "failed";
+                    update = new TrainingJobStatusResponse(job.Status, Array.Empty<string>(), job.Logs.Count, job.ErrorMessage, null);
                     break;
+
+                default:
+                    return;
+            }
+
+            subscribers = job.Subscribers.ToList();
+            if (terminal) job.Subscribers.Clear();
+        }
+
+        foreach (var subscriber in subscribers)
+        {
+            subscriber.Writer.TryWrite(update);
+            if (terminal) subscriber.Writer.TryComplete();
+        }
+    }
+
+    public IAsyncEnumerable<TrainingJobStatusResponse> SubscribeAsync(string jobId, CancellationToken cancellationToken)
+    {
+        if (!_jobs.TryGetValue(jobId, out var job))
+            throw new KeyNotFoundException($"Unknown training job '{jobId}'.");
+
+        return StreamAsync(job, cancellationToken);
+    }
+
+    // A plain (non-iterator) method wraps this so the KeyNotFoundException above is thrown
+    // immediately when SubscribeAsync is called, not deferred until the first MoveNextAsync -
+    // C# defers everything in an iterator method's body until enumeration actually starts.
+    private static async IAsyncEnumerable<TrainingJobStatusResponse> StreamAsync(
+        Job job, [EnumeratorCancellation] CancellationToken cancellationToken)
+    {
+        var channel = Channel.CreateUnbounded<TrainingJobStatusResponse>();
+
+        TrainingJobStatusResponse snapshot;
+        lock (job.Lock)
+        {
+            snapshot = new TrainingJobStatusResponse(job.Status, job.Logs.ToList(), job.Logs.Count, job.ErrorMessage, job.Result);
+            if (job.Status == "running")
+                job.Subscribers.Add(channel);
+            else
+                channel.Writer.TryComplete();
+        }
+
+        yield return snapshot;
+
+        try
+        {
+            await foreach (var update in channel.Reader.ReadAllAsync(cancellationToken))
+            {
+                yield return update;
+            }
+        }
+        finally
+        {
+            lock (job.Lock)
+            {
+                job.Subscribers.Remove(channel);
             }
         }
     }
@@ -107,6 +173,7 @@ public class TrainingJobService : ITrainingJobService
     {
         public readonly List<string> Logs = new();
         public readonly object Lock = new();
+        public readonly List<Channel<TrainingJobStatusResponse>> Subscribers = new();
         public string Status = "running";
         public string? ErrorMessage;
         public TrainResponse? Result;
