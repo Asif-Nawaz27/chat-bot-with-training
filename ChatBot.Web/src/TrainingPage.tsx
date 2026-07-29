@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
-  getTrainingJobStatus,
   startTraining,
+  subscribeTrainingJob,
   uploadDataset,
   type TrainResult,
   type UploadDatasetResult,
@@ -43,14 +43,14 @@ function TrainingPage({ modelTrained, onTrained, onSwitchToChat }: TrainingPageP
   const [result, setResult] = useState<TrainResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const pollHandle = useRef<{ cancelled: boolean } | null>(null);
+  const unsubscribeRef = useRef<(() => void) | null>(null);
   const learningRate = LEARNING_RATES[learningRateIndex];
 
   useEffect(() => {
-    // Stop polling if the page unmounts mid-training (tab switches keep the
+    // Close the SSE connection if the page unmounts mid-training (tab switches keep the
     // component mounted, but this guards against a real unmount regardless).
     return () => {
-      if (pollHandle.current) pollHandle.current.cancelled = true;
+      unsubscribeRef.current?.();
     };
   }, []);
 
@@ -76,23 +76,18 @@ function TrainingPage({ modelTrained, onTrained, onSwitchToChat }: TrainingPageP
         datasetBlobName: uploaded?.storedInBlob ? uploaded.datasetPath : undefined,
         dataPath: uploaded && !uploaded.storedInBlob ? uploaded.datasetPath : undefined,
       });
-      pollJob(jobId);
+      streamJob(jobId);
     } catch (err) {
       setError(describeError(err));
       setPhase("error");
     }
   }
 
-  function pollJob(jobId: string) {
-    const handle = { cancelled: false };
-    pollHandle.current = handle;
-    let cursor = 0;
-
-    const tick = async () => {
-      if (handle.cancelled) return;
-      try {
-        const status = await getTrainingJobStatus(jobId, cursor);
-        cursor = status.nextCursor;
+  function streamJob(jobId: string) {
+    unsubscribeRef.current?.();
+    unsubscribeRef.current = subscribeTrainingJob(
+      jobId,
+      (status) => {
         if (status.logs.length > 0) {
           setLogs((prev) => [...prev, ...status.logs]);
         }
@@ -100,22 +95,20 @@ function TrainingPage({ modelTrained, onTrained, onSwitchToChat }: TrainingPageP
         if (status.status === "completed") {
           setResult(status.result);
           setPhase("done");
+          unsubscribeRef.current?.();
           onTrained();
-          return;
-        }
-        if (status.status === "failed") {
+        } else if (status.status === "failed") {
           setError(status.errorMessage ?? "Training failed.");
           setPhase("error");
-          return;
+          unsubscribeRef.current?.();
         }
-        setTimeout(tick, 700);
-      } catch (err) {
-        setError(describeError(err));
+      },
+      () => {
+        setError("Lost connection to the training stream.");
         setPhase("error");
-      }
-    };
-
-    tick();
+        unsubscribeRef.current?.();
+      },
+    );
   }
 
   const progress = parseProgress(logs);

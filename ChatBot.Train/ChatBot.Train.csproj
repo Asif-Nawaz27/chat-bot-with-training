@@ -23,4 +23,11 @@
     <ProjectReference Include="..\ChatBot.Data\ChatBot.Data.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- Not auto-copied like in a Web SDK project (Microsoft.NET.Sdk here, not Sdk.Web) -
+         AzureServiceBus/AzureStorage/TrainingCallback config lives here now; local.settings.json
+         keeps only the Functions host bootstrap values (AzureWebJobsStorage, FUNCTIONS_WORKER_RUNTIME). -->
+    <None Include="appsettings.json" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
 </Project>

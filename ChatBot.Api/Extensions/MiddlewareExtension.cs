@@ -24,10 +24,11 @@ namespace ChatBot.Api.Extensions
             // API-only: optionally syncs the local Data/ folder with Azure Blob Storage
             services.AddSingleton<IBlobStorageService, BlobStorageService>();
 
-            // Publishes training job requests to Service Bus for ChatBot.Train to pick up,
-            // and listens on the status queue for the progress/completion messages it sends back.
+            // Publishes training job requests to Service Bus for ChatBot.Train to pick up.
+            // Progress/completion comes back via ChatBot.Train calling POST
+            // api/training/{jobId}/status-callback directly (see TrainingController), not
+            // through Service Bus.
             services.AddSingleton<IServiceBusPublisher, ServiceBusPublisher>();
-            services.AddHostedService<TrainingStatusListener>();
 
             // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
             services.AddOpenApi();
@@ -42,9 +43,13 @@ namespace ChatBot.Api.Extensions
             // Disabled (a no-op) when no AzureStorage:ConnectionString is configured.
             services.Configure<BlobStorageOptions>(configuration.GetSection("AzureStorage"));
 
-            // Service Bus queue names/connection string used to hand training jobs off to
-            // ChatBot.Train and receive progress back - see appsettings.Development.json.
+            // Service Bus queue name/connection string used to hand training jobs off to
+            // ChatBot.Train - see appsettings.Development.json.
             services.Configure<ServiceBusOptions>(configuration.GetSection("AzureServiceBus"));
+
+            // Shared secret ChatBot.Train presents when it calls back with training status -
+            // see appsettings.Development.json.
+            services.Configure<TrainingCallbackOptions>(configuration.GetSection("TrainingCallback"));
 
             // CORS allowed origins - see appsettings.json's "AppSetting:cors".
             services.Configure<AppSettingOptions>(configuration.GetSection("AppSetting"));

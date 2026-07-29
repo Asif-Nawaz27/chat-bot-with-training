@@ -29,9 +29,20 @@ public interface ITrainingJobService
     TrainingJobStatusResponse GetStatus(string jobId, int since);
 
     /// <summary>
-    /// Folds a progress/completion message received from ChatBot.Train (via the status
-    /// queue) into the job it refers to. A no-op if the job id isn't known to this
-    /// instance (e.g. the API restarted after the job started).
+    /// Folds a progress/completion message received from ChatBot.Train (via the
+    /// status-callback endpoint) into the job it refers to, and pushes it to any
+    /// subscribers registered via <see cref="SubscribeAsync"/>. A no-op if the job id isn't
+    /// known to this instance (e.g. the API restarted after the job started).
     /// </summary>
     void ApplyStatusUpdate(TrainingStatusMessage message);
+
+    /// <summary>
+    /// Streams the job's status as it changes - first the current state (so a subscriber
+    /// that attaches mid-run still sees everything logged so far), then one item per
+    /// subsequent <see cref="ApplyStatusUpdate"/> call, ending once the job reaches a
+    /// terminal state ("completed"/"failed") or <paramref name="cancellationToken"/> fires
+    /// (e.g. the client disconnected). Backs <c>GET api/training/{jobId}/stream</c>.
+    /// </summary>
+    /// <exception cref="KeyNotFoundException">The job id is unknown.</exception>
+    IAsyncEnumerable<TrainingJobStatusResponse> SubscribeAsync(string jobId, CancellationToken cancellationToken);
 }

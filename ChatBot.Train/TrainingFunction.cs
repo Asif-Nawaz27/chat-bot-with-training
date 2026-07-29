@@ -7,45 +7,41 @@ using ChatBot.Data.Storage;
 using ChatBot.Data.Training;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 
 namespace ChatBot.Train;
 
 /// <summary>
 /// Dequeues a <see cref="TrainingJobMessage"/> from the training queue, runs training via
-/// the same ChatBot.Data services ChatBot.Api used to call in-process, and streams progress
-/// back on the status queue as <see cref="TrainingStatusMessage"/>s - one per log line, then
-/// a final Completed or Failed message. See ChatBot.Api's TrainingStatusListener for the
-/// receiving side.
+/// the same ChatBot.Data services ChatBot.Api used to call in-process, and reports progress
+/// back via <see cref="ITrainingStatusReporter"/> as <see cref="TrainingStatusMessage"/>s -
+/// one per log line, then a final Completed or Failed message. See ChatBot.Api's
+/// TrainingController.StatusCallback for the receiving side.
 /// </summary>
 public class TrainingFunction
 {
     private readonly ITrainingService _trainingService;
     private readonly ITrainingDataProvider _dataProvider;
     private readonly IBlobStorageService _blobStorage;
-    private readonly IServiceBusPublisher _publisher;
-    private readonly ServiceBusOptions _options;
+    private readonly ITrainingStatusReporter _statusReporter;
     private readonly ILogger<TrainingFunction> _logger;
 
     public TrainingFunction(
         ITrainingService trainingService,
         ITrainingDataProvider dataProvider,
         IBlobStorageService blobStorage,
-        IServiceBusPublisher publisher,
-        IOptions<ServiceBusOptions> options,
+        ITrainingStatusReporter statusReporter,
         ILogger<TrainingFunction> logger)
     {
         _trainingService = trainingService;
         _dataProvider = dataProvider;
         _blobStorage = blobStorage;
-        _publisher = publisher;
-        _options = options.Value;
+        _statusReporter = statusReporter;
         _logger = logger;
     }
 
     [Function(nameof(TrainingFunction))]
     public async Task Run(
-        [ServiceBusTrigger("%ServiceBusTrainingQueueName%", Connection = "ServiceBusConnection")]
+        [ServiceBusTrigger("%AzureServiceBus_TrainingQueueName%", Connection = "AzureServiceBus_ConnectionString")]
         ServiceBusReceivedMessage message,
         ServiceBusMessageActions messageActions)
     {
@@ -55,7 +51,7 @@ public class TrainingFunction
         _logger.LogInformation("Starting training job {JobId}", job.JobId);
 
         void Log(string line) =>
-            _publisher.PublishAsync(_options.StatusQueueName, new TrainingStatusMessage(job.JobId, TrainingStatusKind.Log, LogLine: line))
+            _statusReporter.ReportAsync(new TrainingStatusMessage(job.JobId, TrainingStatusKind.Log, LogLine: line))
                 .GetAwaiter().GetResult();
 
         try
@@ -98,8 +94,7 @@ public class TrainingFunction
                 Log("Checkpoint uploaded to Azure Blob Storage.");
             }
 
-            await _publisher.PublishAsync(
-                _options.StatusQueueName,
+            await _statusReporter.ReportAsync(
                 new TrainingStatusMessage(
                     job.JobId,
                     TrainingStatusKind.Completed,
@@ -110,8 +105,7 @@ public class TrainingFunction
         catch (Exception ex)
         {
             _logger.LogError(ex, "Training job {JobId} failed", job.JobId);
-            await _publisher.PublishAsync(
-                _options.StatusQueueName,
+            await _statusReporter.ReportAsync(
                 new TrainingStatusMessage(job.JobId, TrainingStatusKind.Failed, ErrorMessage: ex.Message));
 
             // Let the trigger's normal retry/dead-letter behavior handle this delivery.

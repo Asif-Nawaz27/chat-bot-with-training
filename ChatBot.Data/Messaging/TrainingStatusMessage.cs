@@ -14,10 +14,10 @@ public enum TrainingStatusKind
 }
 
 /// <summary>
-/// Sent by ChatBot.Train to the status queue as training progresses - one message per log
-/// line, plus a final Completed or Failed message. ChatBot.Api's status listener folds
-/// these into the same in-memory job/log model its polling endpoint already serves, so the
-/// web UI keeps working unchanged.
+/// Sent by ChatBot.Train to ChatBot.Api's status-callback endpoint as training progresses -
+/// one message per log line, plus a final Completed or Failed message. ChatBot.Api folds
+/// these into the same in-memory job/log model and fans them out over SSE to subscribed
+/// clients (see TrainingJobService.ApplyStatusUpdate / SubscribeAsync).
 /// </summary>
 public record TrainingStatusMessage(
     string JobId,
