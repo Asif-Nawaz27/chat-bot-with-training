@@ -49,6 +49,7 @@ public class TrainingFunction
             ?? throw new InvalidOperationException("Training job message body could not be deserialized.");
 
         _logger.LogInformation("Starting training job {JobId}", job.JobId);
+        _logger.LogInformation("Azure blob storage status {IsEnabled}", _blobStorage.IsEnabled);
 
         void Log(string line) =>
             _statusReporter.ReportAsync(new TrainingStatusMessage(job.JobId, TrainingStatusKind.Log, LogLine: line))
